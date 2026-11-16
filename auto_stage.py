@@ -94,6 +94,17 @@ def click_enemy_area(region: WindowRegion) -> tuple[int, int]:
     return click_box_in_region(region, box)
 
 
+def click_right_portal(region: WindowRegion) -> tuple[int, int]:
+    """Click the blue >>> portal arrows on the right side of walk-out stages."""
+    box = (
+        int(region.width * 0.90),
+        int(region.height * 0.55),
+        int(region.width * 0.07),
+        int(region.height * 0.08),
+    )
+    return click_box_in_region(region, box)
+
+
 def _skill_slots(work_w: int) -> list[tuple[str, tuple[int, int, int, int]]]:
     """Return skill slots (S3 rightmost -> S2 middle -> S1 leftmost) in BASE_HEIGHT space."""
     return [
@@ -230,10 +241,14 @@ def step_once(
         x, y = click_clear_safe_area(region)
         return f"rank_up ({m.score:.2f}) -> click ({x}, {y})"
 
-    # 2. Popup: Skip Story -> Confirm (verified by prompt text)
+    # 2. Popup: Skip Story / Auto Assign -> Confirm (verified by prompt/header)
     if find("skip_story_prompt", 0.80) and (m := find("skip_confirm", 0.82)):
         x, y = click_scaled(m)
         return f"skip_confirm ({m.score:.2f}) -> ({x}, {y})"
+
+    if find("auto_assign_header", 0.80) and (m := find("skip_confirm", 0.80)):
+        x, y = click_scaled(m)
+        return f"auto_assign_confirm ({m.score:.2f}) -> ({x}, {y})"
 
     # 3. Popup: Friend Request -> Cancel (verified by friend header)
     if find("friend_header", 0.80) and (m := find("friend_cancel", 0.82)):
@@ -254,10 +269,14 @@ def step_once(
         x, y = click_scaled(m, hold_seconds=3.0)
         return f"cutscene_skip hold 3s ({m.score:.2f}) -> ({x}, {y})"
 
-    # 6. Battle CLEAR screen
+    # 6. Battle CLEAR screen or walk-out >>> portal
     if m := find("clear_logo", 0.78):
         x, y = click_clear_safe_area(region)
         return f"clear_logo ({m.score:.2f}) -> click ({x}, {y})"
+
+    if m := find("walk_leave_lobby", 0.82):
+        x, y = click_right_portal(region)
+        return f"walk_portal ({m.score:.2f}) -> click ({x}, {y})"
 
     # 7. MVP screen -> Confirm >
     if m := find("mvp_confirm", 0.82):
