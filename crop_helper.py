@@ -18,6 +18,7 @@ TEMPLATE_GUIDE = [
     ("cutscene_skip", "(Optional) Circular '>>|' icon during animated cutscenes"),
     ("clear_logo", "'CLEAR' text after winning a 3-star stage"),
     ("clear_logo_single", "'CLEAR' text after winning a 1-star Side Story stage"),
+    ("abyss_next_floor", "'Next Floor' button on Abyss clear screen"),
     ("walk_leave_lobby", "'Leave' + 'Lobby' buttons on walk-out portal screens"),
     ("mvp_confirm", "Green 'Confirm >' button on the MVP screen"),
     ("start_quest", "'Start Quest' button"),
