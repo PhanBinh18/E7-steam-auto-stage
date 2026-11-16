@@ -255,10 +255,16 @@ def step_once(
         x, y = click_scaled(m)
         return f"friend_cancel ({m.score:.2f}) -> ({x}, {y})"
 
-    # 4. Dialogue: Skip > or Act banner
-    if m := find("skip_btn", 0.80):
-        x, y = click_scaled(m)
-        return f"skip_btn ({m.score:.2f}) -> ({x}, {y})"
+    # 4. Dialogue: Skip > (restricted to top-right corner) or Act banner
+    if (skip_tmpl := templates.get("skip_btn")) is not None:
+        wh, ww = work_screen.shape[:2]
+        roi_x = max(0, ww - 220)
+        top_right_skip = work_screen[0:100, roi_x:ww]
+        if m := match_template(top_right_skip, skip_tmpl, threshold=0.72):
+            mx, my, mw, mh = m.box
+            real_box = _scale_box((roi_x + mx, my, mw, mh), scale)
+            x, y = click_box_in_region(region, real_box)
+            return f"skip_btn ({m.score:.2f}) -> ({x}, {y})"
 
     if m := find("act_banner", 0.78):
         x, y = click_center_safe_area(region)
