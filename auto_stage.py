@@ -400,7 +400,11 @@ def main() -> None:
         action = step_once(region, screen, templates, threshold=0.82)
         if action:
             print(f"[CLICK] {action}")
-            time.sleep(random.uniform(0.75, 1.25))
+            is_popup = action.startswith(
+                ("tap_to_close", "skip_confirm", "auto_assign_confirm", "friend_cancel")
+            )
+            delay = random.uniform(1.15, 1.50) if is_popup else random.uniform(0.75, 1.25)
+            time.sleep(delay)
         else:
             if args.debug:
                 top3 = ", ".join(f"{n}={s:.3f}" for n, s in get_top_scores(screen, templates)[:3])
