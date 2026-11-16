@@ -12,6 +12,7 @@ from typing import Optional
 import cv2
 import mss
 import numpy as np
+import win32api
 import win32con
 import win32gui
 import win32ui
@@ -68,6 +69,66 @@ def find_game_window(title_substring: str = "Epic Seven") -> Optional[WindowRegi
 
     win32gui.EnumWindows(_enum_cb, 0)
     return matches[0] if matches else None
+
+
+def resize_game_window(
+    hwnd: int,
+    monitor_ratio: float = 0.80,
+    client_aspect: float = 1920 / 991,
+) -> None:
+    """Restore if maximized and resize client area to monitor_ratio of the current monitor."""
+    if win32gui.IsIconic(hwnd):
+        return
+
+    # Restore from maximized state so SetWindowPos can resize freely
+    placement = win32gui.GetWindowPlacement(hwnd)
+    if placement[1] == win32con.SW_SHOWMAXIMIZED:
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+        time.sleep(0.15)
+
+    hmon = win32api.MonitorFromWindow(hwnd, win32con.MONITOR_DEFAULTTONEAREST)
+    mon_info = win32api.GetMonitorInfo(hmon)
+    work_left, work_top, work_right, work_bottom = mon_info["Work"]
+    mon_left, mon_top, mon_right, mon_bottom = mon_info["Monitor"]
+
+    mon_w = mon_right - mon_left
+    work_w = work_right - work_left
+    work_h = work_bottom - work_top
+
+    target_cw = int(mon_w * monitor_ratio)
+    target_ch = int(round(target_cw / client_aspect))
+
+    # Measure non-client border/titlebar overhead from current window vs client rect
+    wl, wt_, wr, wb = win32gui.GetWindowRect(hwnd)
+    cl, ct, cr, cb = win32gui.GetClientRect(hwnd)
+    border_w = (wr - wl) - (cr - cl)
+    border_h = (wb - wt_) - (cb - ct)
+
+    # Clamp to work area if needed
+    max_cw = max(320, work_w - border_w)
+    max_ch = max(240, work_h - border_h)
+    if target_cw > max_cw:
+        target_cw = max_cw
+        target_ch = int(round(target_cw / client_aspect))
+    if target_ch > max_ch:
+        target_ch = max_ch
+        target_cw = int(round(target_ch * client_aspect))
+
+    win_w = target_cw + border_w
+    win_h = target_ch + border_h
+    pos_x = work_left + (work_w - win_w) // 2
+    pos_y = work_top + (work_h - win_h) // 2
+
+    win32gui.SetWindowPos(
+        hwnd,
+        0,
+        pos_x,
+        pos_y,
+        win_w,
+        win_h,
+        win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE,
+    )
+    time.sleep(0.15)
 
 
 _PW_CLIENTONLY = 0x00000001

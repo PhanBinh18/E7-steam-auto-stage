@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import random
 import time
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ from window_utils import (
     click_box_in_region,
     enable_dpi_awareness,
     find_game_window,
+    resize_game_window,
 )
 
 
@@ -163,6 +165,14 @@ def step_once(
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Epic Seven Steam background auto-stage.")
+    parser.add_argument(
+        "--no-resize",
+        action="store_true",
+        help="Do not automatically resize the game window to 80%% of its monitor.",
+    )
+    args = parser.parse_args()
+
     enable_dpi_awareness()
     templates = load_templates(Path("templates"))
     if not templates:
@@ -174,6 +184,7 @@ def main() -> None:
 
     paused = False
     f8_was_down = False
+    resized_once = False
 
     while True:
         if keyboard.is_pressed("f10"):
@@ -195,6 +206,12 @@ def main() -> None:
             print("[WAIT] Waiting for 'Epic Seven' window...", end="\r")
             time.sleep(1.0)
             continue
+
+        if not resized_once and not args.no_resize:
+            resize_game_window(region.hwnd, monitor_ratio=0.80, client_aspect=BASE_WIDTH / BASE_HEIGHT)
+            region = find_game_window("Epic Seven") or region
+            print(f"[INFO] Resized game client to {region.width}x{region.height} (80% monitor width)")
+            resized_once = True
 
         screen = capture_region(region)
         action = step_once(region, screen, templates, threshold=0.82)

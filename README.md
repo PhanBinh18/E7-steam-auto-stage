@@ -8,7 +8,7 @@ A Python auto-clicker for clearing **Epic Seven (Steam / Windows)** story and ep
   - Sends background mouse clicks via `PostMessage` (`WM_LBUTTONDOWN` / `WM_LBUTTONUP`) without moving your physical cursor or stealing focus from your active window.
 - **Priority-Based State Machine:** Automatically handles the full loop:
   `Ready` → `Select Team` → `Start Quest` → dialogue skip (`Skip >` + `Confirm`) → battle wait → `CLEAR` → dismiss `Friend` prompt (`Cancel`) → `MVP Confirm` → close `Tap to close` popups (`Story Clear`, `Received Reward`).
-- **Multi-Monitor & Auto-Scaling:** Enables Per-Monitor DPI Awareness and automatically scales frames from the `1920x991` base templates to other 16:9 window sizes.
+- **Multi-Monitor & Auto-Resize / Scaling:** Enables Per-Monitor DPI Awareness, automatically resizes and centers the game window to **80% of its current monitor** with the proper aspect ratio (pass `--no-resize` to disable), and scales templates cleanly across resolutions.
 - **Hotkeys:** `F8` to Pause / Resume, `F10` to Exit.
 
 ## Installation
@@ -25,6 +25,7 @@ pip install -r requirements.txt
    ```powershell
    python auto_stage.py
    ```
+   *(Optional: `python auto_stage.py --no-resize` to keep your current window size.)*
 4. Do not minimize the game window (you can cover it with other windows).
 5. Press **`F8`** to pause/resume, or **`F10`** to exit.
 
