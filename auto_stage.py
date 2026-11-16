@@ -269,10 +269,14 @@ def step_once(
         x, y = click_scaled(m, hold_seconds=3.0)
         return f"cutscene_skip hold 3s ({m.score:.2f}) -> ({x}, {y})"
 
-    # 6. Battle CLEAR screen or walk-out >>> portal
+    # 6. Battle CLEAR screen (3-star or 1-star) or walk-out >>> portal
     if m := find("clear_logo", 0.78):
         x, y = click_clear_safe_area(region)
         return f"clear_logo ({m.score:.2f}) -> click ({x}, {y})"
+
+    if m := find("clear_logo_single", 0.78):
+        x, y = click_clear_safe_area(region)
+        return f"clear_logo_single ({m.score:.2f}) -> click ({x}, {y})"
 
     if m := find("walk_leave_lobby", 0.82):
         x, y = click_right_portal(region)
