@@ -13,13 +13,20 @@ TEMPLATE_GUIDE = [
     ("friend_header", "'Friend' title (or 'Would you like to send a friend request?')"),
     ("friend_cancel", "'Cancel' button in the Friend popup"),
     ("skip_btn", "'Skip >' button at the top-right"),
+    ("act_banner", "Top gold ornament of the Side Story Act banner"),
     ("cutscene_skip", "(Optional) Circular '>>|' icon during animated cutscenes"),
     ("clear_logo", "'CLEAR' text after winning a stage"),
     ("mvp_confirm", "Green 'Confirm >' button on the MVP screen"),
     ("start_quest", "'Start Quest' button"),
+    ("side_start", "'Start' button on Side Story team screen"),
     ("select_team", "'Select Team >' button"),
     ("ready", "'Ready' button"),
+    ("side_ready", "'Ready' button on Side Story"),
     ("view_story", "'View Story' button on story-only stages"),
+    ("side_view", "'View' button on Side Story"),
+    ("auto_battle_icon", "Top-right Auto-battle 'A' icon"),
+    ("cooldown_turns", "'turn(s)' text on a skill cooldown"),
+    ("passive_corner", "Top-left notched corner of a passive S2 skill"),
 ]
 
 

@@ -72,6 +72,111 @@ def click_clear_safe_area(region: WindowRegion) -> tuple[int, int]:
     return click_box_in_region(region, box)
 
 
+def click_center_safe_area(region: WindowRegion) -> tuple[int, int]:
+    """Click center area (e.g., Act banner) to reveal Skip or advance."""
+    box = (
+        int(region.width * 0.42),
+        int(region.height * 0.42),
+        int(region.width * 0.16),
+        int(region.height * 0.16),
+    )
+    return click_box_in_region(region, box)
+
+
+def click_enemy_area(region: WindowRegion) -> tuple[int, int]:
+    """Click enemy side of the battlefield after selecting a manual skill."""
+    box = (
+        int(region.width * 0.72),
+        int(region.height * 0.44),
+        int(region.width * 0.08),
+        int(region.height * 0.12),
+    )
+    return click_box_in_region(region, box)
+
+
+def _skill_slots(work_w: int) -> list[tuple[str, tuple[int, int, int, int]]]:
+    """Return skill slots (S3 rightmost -> S2 middle -> S1 leftmost) in BASE_HEIGHT space."""
+    return [
+        ("S3", (work_w - 150, 845, 132, 132)),
+        ("S2", (work_w - 293, 845, 132, 132)),
+        ("S1", (work_w - 436, 845, 132, 132)),
+    ]
+
+
+def _is_skill_on_cooldown(slot_img: np.ndarray, templates: dict[str, np.ndarray]) -> bool:
+    tmpl = templates.get("cooldown_turns")
+    if tmpl is None:
+        return False
+    return match_template(slot_img, tmpl, threshold=0.52) is not None
+
+
+def _is_passive_s2(slot_img: np.ndarray, templates: dict[str, np.ndarray]) -> bool:
+    tmpl = templates.get("passive_corner")
+    if tmpl is None:
+        return False
+    return match_template(slot_img, tmpl, threshold=0.90) is not None
+
+
+def _handle_battle(
+    region: WindowRegion,
+    work_screen: np.ndarray,
+    scale: float,
+    templates: dict[str, np.ndarray],
+) -> Optional[str]:
+    """Handle battle auto-toggle (if active & not spinning) or manual skills (if dimmed)."""
+    a_tmpl = templates.get("auto_battle_icon")
+    if a_tmpl is None:
+        return None
+
+    wh, ww = work_screen.shape[:2]
+    roi_x = max(0, ww - 420)
+    top_right = work_screen[0:110, roi_x:ww]
+    m = match_template(top_right, a_tmpl, threshold=0.45)
+    if m is None:
+        return None
+
+    ax, ay, aw, ah = m.box
+    abs_a_box = (roi_x + ax, ay, aw, ah)
+    a_patch1 = work_screen[ay : ay + ah, roi_x + ax : roi_x + ax + aw]
+    p95 = float(np.percentile(cv2.cvtColor(a_patch1, cv2.COLOR_BGR2GRAY), 95))
+
+    # Case 1: Auto-battle icon is bright/active -> check if spinning across 0.25s
+    if p95 >= 180.0:
+        time.sleep(0.25)
+        screen2 = capture_region(region)
+        work2, _ = _prepare_work_screen(screen2)
+        if work2.shape[:2] == work_screen.shape[:2]:
+            a_patch2 = work2[ay : ay + ah, roi_x + ax : roi_x + ax + aw]
+            diff = float(cv2.absdiff(a_patch1, a_patch2).mean())
+            if diff < 4.0:
+                x, y = click_box_in_region(region, _scale_box(abs_a_box, scale))
+                return f"enable_auto_battle (diff={diff:.2f}) -> ({x}, {y})"
+        return None
+
+    # Case 2: Auto-battle icon is dimmed -> manual-only fight; check if our turn (S1 visible)
+    slots = _skill_slots(ww)
+    _, (s1x, s1y, s1w, s1h) = slots[-1]
+    if s1x < 0 or s1y + s1h > wh:
+        return None
+    s1_patch = work_screen[s1y : s1y + s1h, s1x : s1x + s1w]
+    if float(np.percentile(cv2.cvtColor(s1_patch, cv2.COLOR_BGR2GRAY), 95)) < 185.0:
+        return None
+
+    for name, (sx, sy, sw, sh) in slots:
+        patch = work_screen[sy : sy + sh, sx : sx + sw]
+        if _is_skill_on_cooldown(patch, templates):
+            continue
+        if name == "S2" and _is_passive_s2(patch, templates):
+            continue
+
+        x, y = click_box_in_region(region, _scale_box((sx, sy, sw, sh), scale))
+        time.sleep(random.uniform(0.30, 0.45))
+        tx, ty = click_enemy_area(region)
+        return f"manual_skill {name} -> ({x}, {y}), target -> ({tx}, {ty})"
+
+    return None
+
+
 def _prepare_work_screen(screen: np.ndarray) -> tuple[np.ndarray, float]:
     """Scale screen uniformly by height to match BASE_HEIGHT without aspect distortion."""
     sh, sw = screen.shape[:2]
@@ -135,10 +240,14 @@ def step_once(
         x, y = click_scaled(m)
         return f"friend_cancel ({m.score:.2f}) -> ({x}, {y})"
 
-    # 4. Dialogue: Skip >
+    # 4. Dialogue: Skip > or Act banner
     if m := find("skip_btn", 0.80):
         x, y = click_scaled(m)
         return f"skip_btn ({m.score:.2f}) -> ({x}, {y})"
+
+    if m := find("act_banner", 0.78):
+        x, y = click_center_safe_area(region)
+        return f"act_banner ({m.score:.2f}) -> click ({x}, {y})"
 
     # 5. Cutscene anime: hold >>| if template provided
     if m := find("cutscene_skip", 0.80):
@@ -155,24 +264,40 @@ def step_once(
         x, y = click_scaled(m)
         return f"mvp_confirm ({m.score:.2f}) -> ({x}, {y})"
 
-    # 8. Team screen -> Start Quest
+    # 8. Team screen -> Start Quest or Side Story Start
     if m := find("start_quest", 0.82):
         x, y = click_scaled(m)
         return f"start_quest ({m.score:.2f}) -> ({x}, {y})"
+
+    if m := find("side_start", 0.82):
+        x, y = click_scaled(m)
+        return f"side_start ({m.score:.2f}) -> ({x}, {y})"
 
     # 9. Supporter screen -> Select Team >
     if m := find("select_team", 0.82):
         x, y = click_scaled(m)
         return f"select_team ({m.score:.2f}) -> ({x}, {y})"
 
-    # 10. Episode screen -> Ready or View Story
+    # 10. Episode / Side Story screen -> Ready / View Story / View
     if m := find("ready", 0.84):
         x, y = click_scaled(m)
         return f"ready ({m.score:.2f}) -> ({x}, {y})"
 
+    if m := find("side_ready", 0.82):
+        x, y = click_scaled(m)
+        return f"side_ready ({m.score:.2f}) -> ({x}, {y})"
+
     if m := find("view_story", 0.82):
         x, y = click_scaled(m)
         return f"view_story ({m.score:.2f}) -> ({x}, {y})"
+
+    if m := find("side_view", 0.82):
+        x, y = click_scaled(m)
+        return f"side_view ({m.score:.2f}) -> ({x}, {y})"
+
+    # 11. In-battle: enable Auto if not spinning, or cast manual skills if Auto is dimmed
+    if battle_action := _handle_battle(region, work_screen, scale, templates):
+        return battle_action
 
     return None
 
