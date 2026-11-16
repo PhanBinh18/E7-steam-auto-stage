@@ -120,6 +120,11 @@ def step_once(
         x, y = click_scaled(m)
         return f"tap_to_close ({m.score:.2f}) -> ({x}, {y})"
 
+    # 1b. Rank Up screen -> click anywhere on screen
+    if m := find("rank_up", 0.78):
+        x, y = click_clear_safe_area(region)
+        return f"rank_up ({m.score:.2f}) -> click ({x}, {y})"
+
     # 2. Popup: Skip Story -> Confirm (verified by prompt text)
     if find("skip_story_prompt", 0.80) and (m := find("skip_confirm", 0.82)):
         x, y = click_scaled(m)

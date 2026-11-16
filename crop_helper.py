@@ -7,6 +7,7 @@ import cv2
 
 TEMPLATE_GUIDE = [
     ("tap_to_close", "'Tap to close' label (Story Clear / Received Reward popups)"),
+    ("rank_up", "'Energy for Ranking up' text on the Rank Up screen"),
     ("skip_story_prompt", "'Are you sure you want to skip the story?' prompt text"),
     ("skip_confirm", "Blue 'Confirm' button in the Skip Story popup"),
     ("friend_header", "'Friend' title (or 'Would you like to send a friend request?')"),
