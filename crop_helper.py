@@ -19,6 +19,7 @@ TEMPLATE_GUIDE = [
     ("start_quest", "'Start Quest' button"),
     ("select_team", "'Select Team >' button"),
     ("ready", "'Ready' button"),
+    ("view_story", "'View Story' button on story-only stages"),
 ]
 
 

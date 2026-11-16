@@ -165,10 +165,14 @@ def step_once(
         x, y = click_scaled(m)
         return f"select_team ({m.score:.2f}) -> ({x}, {y})"
 
-    # 10. Episode screen -> Ready
+    # 10. Episode screen -> Ready or View Story
     if m := find("ready", 0.84):
         x, y = click_scaled(m)
         return f"ready ({m.score:.2f}) -> ({x}, {y})"
+
+    if m := find("view_story", 0.82):
+        x, y = click_scaled(m)
+        return f"view_story ({m.score:.2f}) -> ({x}, {y})"
 
     return None
 
@@ -195,7 +199,7 @@ def main() -> None:
     parser.add_argument(
         "--no-resize",
         action="store_true",
-        help="Do not automatically resize the game window to 80%% of its monitor.",
+        help="Do not automatically resize the game window to 1280x720.",
     )
     parser.add_argument(
         "--debug",
@@ -239,9 +243,9 @@ def main() -> None:
             continue
 
         if not resized_once and not args.no_resize:
-            resize_game_window(region.hwnd, monitor_ratio=0.80, client_aspect=16 / 9)
+            resize_game_window(region.hwnd, target_width=1280, client_aspect=16 / 9)
             region = find_game_window("Epic Seven") or region
-            print(f"[INFO] Resized game client to {region.width}x{region.height} (80% monitor width)")
+            print(f"[INFO] Resized game client to {region.width}x{region.height}")
             resized_once = True
 
         screen = capture_region(region)

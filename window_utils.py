@@ -73,10 +73,10 @@ def find_game_window(title_substring: str = "Epic Seven") -> Optional[WindowRegi
 
 def resize_game_window(
     hwnd: int,
-    monitor_ratio: float = 0.80,
+    target_width: int = 1280,
     client_aspect: float = 16 / 9,
 ) -> None:
-    """Restore if maximized and resize client area to monitor_ratio of the current monitor."""
+    """Restore if maximized and resize client area to fixed target_width (default 1280x720)."""
     if win32gui.IsIconic(hwnd):
         return
 
@@ -89,13 +89,11 @@ def resize_game_window(
     hmon = win32api.MonitorFromWindow(hwnd, win32con.MONITOR_DEFAULTTONEAREST)
     mon_info = win32api.GetMonitorInfo(hmon)
     work_left, work_top, work_right, work_bottom = mon_info["Work"]
-    mon_left, mon_top, mon_right, mon_bottom = mon_info["Monitor"]
 
-    mon_w = mon_right - mon_left
     work_w = work_right - work_left
     work_h = work_bottom - work_top
 
-    target_cw = int(mon_w * monitor_ratio)
+    target_cw = target_width
     target_ch = int(round(target_cw / client_aspect))
 
     # Measure non-client border/titlebar overhead from current window vs client rect
