@@ -74,7 +74,7 @@ def find_game_window(title_substring: str = "Epic Seven") -> Optional[WindowRegi
 def resize_game_window(
     hwnd: int,
     monitor_ratio: float = 0.80,
-    client_aspect: float = 1920 / 991,
+    client_aspect: float = 16 / 9,
 ) -> None:
     """Restore if maximized and resize client area to monitor_ratio of the current monitor."""
     if win32gui.IsIconic(hwnd):

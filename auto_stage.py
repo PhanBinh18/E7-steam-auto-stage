@@ -72,15 +72,27 @@ def click_clear_safe_area(region: WindowRegion) -> tuple[int, int]:
     return click_box_in_region(region, box)
 
 
+def _prepare_work_screen(screen: np.ndarray) -> tuple[np.ndarray, float]:
+    """Scale screen uniformly by height to match BASE_HEIGHT without aspect distortion."""
+    sh, sw = screen.shape[:2]
+    if sh == BASE_HEIGHT:
+        return screen, 1.0
+    scale = sh / BASE_HEIGHT
+    work_w = max(1, int(round(sw / scale)))
+    interp = cv2.INTER_AREA if sh > BASE_HEIGHT else cv2.INTER_LINEAR
+    work_screen = cv2.resize(screen, (work_w, BASE_HEIGHT), interpolation=interp)
+    return work_screen, scale
+
+
 def _scale_box(
-    box: tuple[int, int, int, int], scale_x: float, scale_y: float
+    box: tuple[int, int, int, int], scale: float
 ) -> tuple[int, int, int, int]:
     x, y, w, h = box
     return (
-        int(round(x * scale_x)),
-        int(round(y * scale_y)),
-        max(1, int(round(w * scale_x))),
-        max(1, int(round(h * scale_y))),
+        int(round(x * scale)),
+        int(round(y * scale)),
+        max(1, int(round(w * scale))),
+        max(1, int(round(h * scale))),
     )
 
 
@@ -91,15 +103,7 @@ def step_once(
     threshold: float,
 ) -> Optional[str]:
     """Check UI states by priority and perform one action if matched."""
-    sh, sw = screen.shape[:2]
-    scale_x = sw / BASE_WIDTH
-    scale_y = sh / BASE_HEIGHT
-
-    if sw != BASE_WIDTH or sh != BASE_HEIGHT:
-        interp = cv2.INTER_AREA if sw > BASE_WIDTH else cv2.INTER_LINEAR
-        work_screen = cv2.resize(screen, (BASE_WIDTH, BASE_HEIGHT), interpolation=interp)
-    else:
-        work_screen = screen
+    work_screen, scale = _prepare_work_screen(screen)
 
     def find(name: str, thr: float = threshold) -> Optional[MatchResult]:
         tmpl = templates.get(name)
@@ -108,7 +112,7 @@ def step_once(
         return match_template(work_screen, tmpl, threshold=thr)
 
     def click_scaled(m: MatchResult, hold_seconds: Optional[float] = None) -> tuple[int, int]:
-        real_box = _scale_box(m.box, scale_x, scale_y)
+        real_box = _scale_box(m.box, scale)
         return click_box_in_region(region, real_box, hold_seconds=hold_seconds)
 
     # 1. Popup: Tap to close (Story Clear / Received Reward / etc.)
@@ -164,12 +168,34 @@ def step_once(
     return None
 
 
+def get_top_scores(
+    screen: np.ndarray, templates: dict[str, np.ndarray]
+) -> list[tuple[str, float]]:
+    work_screen, _ = _prepare_work_screen(screen)
+    wh, ww = work_screen.shape[:2]
+
+    scores: list[tuple[str, float]] = []
+    for name, tmpl in templates.items():
+        th, tw = tmpl.shape[:2]
+        if th <= wh and tw <= ww:
+            res = cv2.matchTemplate(work_screen, tmpl, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, _ = cv2.minMaxLoc(res)
+            scores.append((name, float(max_val)))
+    scores.sort(key=lambda item: item[1], reverse=True)
+    return scores
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Epic Seven Steam background auto-stage.")
     parser.add_argument(
         "--no-resize",
         action="store_true",
         help="Do not automatically resize the game window to 80%% of its monitor.",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print capture brightness and top template match scores when idle.",
     )
     args = parser.parse_args()
 
@@ -208,7 +234,7 @@ def main() -> None:
             continue
 
         if not resized_once and not args.no_resize:
-            resize_game_window(region.hwnd, monitor_ratio=0.80, client_aspect=BASE_WIDTH / BASE_HEIGHT)
+            resize_game_window(region.hwnd, monitor_ratio=0.80, client_aspect=16 / 9)
             region = find_game_window("Epic Seven") or region
             print(f"[INFO] Resized game client to {region.width}x{region.height} (80% monitor width)")
             resized_once = True
@@ -219,6 +245,12 @@ def main() -> None:
             print(f"[CLICK] {action}")
             time.sleep(random.uniform(0.75, 1.25))
         else:
+            if args.debug:
+                top3 = ", ".join(f"{n}={s:.3f}" for n, s in get_top_scores(screen, templates)[:3])
+                print(
+                    f"[DEBUG] size={region.width}x{region.height} "
+                    f"mean={screen.mean():.1f} | top: {top3}"
+                )
             time.sleep(random.uniform(0.45, 0.70))
 
 
