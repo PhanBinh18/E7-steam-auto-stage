@@ -1,0 +1,12 @@
+# Personal screenshots (may contain account/UID info)
+screenshots/
+test_capture.png
+test_printwindow.png
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
