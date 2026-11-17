@@ -142,7 +142,7 @@ def _handle_battle(
     wh, ww = work_screen.shape[:2]
     roi_x = max(0, ww - 420)
     top_right = work_screen[0:110, roi_x:ww]
-    m = match_template(top_right, a_tmpl, threshold=0.45)
+    m = match_template(top_right, a_tmpl, threshold=0.54)
     if m is None:
         return None
 
@@ -151,8 +151,10 @@ def _handle_battle(
     a_patch1 = work_screen[ay : ay + ah, roi_x + ax : roi_x + ax + aw]
     p95 = float(np.percentile(cv2.cvtColor(a_patch1, cv2.COLOR_BGR2GRAY), 95))
 
-    # Case 1: Auto-battle icon is bright/active -> check if spinning across 0.25s
+    # Case 1: Auto-battle icon is bright/active -> require strong match (>= 0.72) so chat icons never match
     if p95 >= 180.0:
+        if m.score < 0.72:
+            return None
         time.sleep(0.25)
         screen2 = capture_region(region)
         work2, _ = _prepare_work_screen(screen2)
